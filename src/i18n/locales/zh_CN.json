@@ -105,6 +105,9 @@
                 "history_disable": "禁用历史记录",
                 "incremental_translate": "增量翻译",
                 "dynamic_translate": "动态翻译",
+                "auto_selection_translate": "划词后自动翻译",
+                "auto_selection_translate_description": "选中文字后自动翻译，中文不触发。仅支持可读取文本选区的应用。",
+                "auto_selection_translate_failed": "自动划词翻译启动失败",
                 "delete_newline": "自动删除换行",
                 "remember_language": "记住目标语言",
                 "font_size": {

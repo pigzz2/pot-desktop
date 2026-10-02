@@ -15,7 +15,8 @@ tauri-build = { version = "1.5", features = [] }
 [dependencies]
 
 tauri = { version = "1.8", features = [ "dialog-save", "dialog-open", "fs-all", "protocol-asset", "shell-all", "clipboard-all", "os-all", "http-all", "http-multipart", "updater", "notification-all", "global-shortcut-all", "window-all", "path-all", "system-tray", "devtools"] }
-tauri-plugin-single-instance = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
+# Tauri 1 fix for null window userdata during Windows startup (upstream PR #2657).
+tauri-plugin-single-instance = { git = "https://github.com/tauri-apps/plugins-workspace", rev = "0fdb85df8ae3ac445822b8c177caecf4532d258e" }
 tauri-plugin-autostart = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 tauri-plugin-fs-watch = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 tauri-plugin-store = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
@@ -46,7 +47,7 @@ macos-accessibility-client = "0.0.1"
 window-shadows = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-windows = {version="0.58.0",features= ["Win32_UI_WindowsAndMessaging", "Win32_Foundation", "Graphics_Imaging", "Media_Ocr", "Foundation", "Globalization", "Storage", "Storage_Streams"] }
+windows = {version="0.58.0",features= ["Win32_UI_WindowsAndMessaging", "Win32_Foundation", "Win32_UI_Accessibility", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Com", "Win32_System_LibraryLoader", "Win32_System_Threading", "Graphics_Imaging", "Media_Ocr", "Foundation", "Globalization", "Storage", "Storage_Streams"] }
 window-shadows = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]

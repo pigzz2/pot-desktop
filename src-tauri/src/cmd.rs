@@ -18,6 +18,8 @@ pub fn reload_store() {
     let state = APP.get().unwrap().state::<StoreWrapper>();
     let mut store = state.0.lock().unwrap();
     store.load().unwrap();
+    drop(store);
+    crate::selection_monitor::sync_from_config();
 }
 
 #[tauri::command]

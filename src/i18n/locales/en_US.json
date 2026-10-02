@@ -105,6 +105,9 @@
                 "history_disable": "Disable History",
                 "incremental_translate": "Incremental Translation",
                 "dynamic_translate": "Dynamic Translation",
+                "auto_selection_translate": "Automatically translate selected text",
+                "auto_selection_translate_description": "Translate selected text automatically, skipping Chinese. Requires an app that exposes text selections.",
+                "auto_selection_translate_failed": "Could not start automatic selection translation",
                 "delete_newline": "Delete Newline",
                 "remember_language": "Remember Target Language",
                 "font_size": {

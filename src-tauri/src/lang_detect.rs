@@ -1,3 +1,48 @@
+#[cfg(any(target_os = "windows", test))]
+use lingua::{Language, LanguageDetector, LanguageDetectorBuilder};
+#[cfg(any(target_os = "windows", test))]
+use once_cell::sync::Lazy;
+
+// Automatic triggering must preserve "unknown", instead of the English fallback
+// used by the manual translation command. Cache the detector across selections.
+#[cfg(any(target_os = "windows", test))]
+static AUTO_DETECTOR: Lazy<LanguageDetector> = Lazy::new(|| {
+    LanguageDetectorBuilder::from_languages(&[
+        Language::Chinese,
+        Language::Japanese,
+        Language::English,
+        Language::Korean,
+        Language::French,
+        Language::Spanish,
+        Language::German,
+        Language::Russian,
+        Language::Italian,
+        Language::Portuguese,
+        Language::Turkish,
+        Language::Arabic,
+        Language::Vietnamese,
+        Language::Thai,
+        Language::Indonesian,
+        Language::Malay,
+        Language::Hindi,
+        Language::Mongolian,
+        Language::Bokmal,
+        Language::Nynorsk,
+        Language::Persian,
+        Language::Ukrainian,
+    ])
+    .with_minimum_relative_distance(0.1)
+    .build()
+});
+
+#[cfg(any(target_os = "windows", test))]
+pub fn should_auto_translate(text: &str) -> bool {
+    if !text.chars().any(char::is_alphabetic) {
+        return false;
+    }
+    matches!(AUTO_DETECTOR.detect_language_of(text), Some(language) if language != Language::Chinese)
+}
+
 pub fn init_lang_detect() {
     // https://crates.io/crates/lingua
     use lingua::{Language, LanguageDetectorBuilder};
@@ -27,6 +72,36 @@ pub fn init_lang_detect() {
     ];
     let detector = LanguageDetectorBuilder::from_languages(&languages).build();
     let _ = detector.detect_language_of("Hello Language");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_auto_translate;
+
+    #[test]
+    fn skips_empty_numeric_and_punctuation_selections() {
+        for text in ["", "  \n\t", "123.45", "!?—", "😀"] {
+            assert!(!should_auto_translate(text), "{text:?}");
+        }
+    }
+
+    #[test]
+    fn skips_both_simplified_and_traditional_chinese() {
+        for text in ["这是一个中文句子。", "這是一個中文句子。", "中文"] {
+            assert!(!should_auto_translate(text), "{text:?}");
+        }
+    }
+
+    #[test]
+    fn translates_recognizable_foreign_text() {
+        for text in [
+            "This is an English sentence.",
+            "これは日本語の文章です。",
+            "안녕하세요",
+        ] {
+            assert!(should_auto_translate(text), "{text:?}");
+        }
+    }
 }
 #[tauri::command]
 pub fn lang_detect(text: &str) -> Result<&str, ()> {

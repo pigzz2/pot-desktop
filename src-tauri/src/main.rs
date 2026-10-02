@@ -9,6 +9,7 @@ mod error;
 mod hotkey;
 mod lang_detect;
 mod screenshot;
+mod selection_monitor;
 mod server;
 mod system_ocr;
 mod tray;
@@ -125,10 +126,12 @@ fn main() {
                 clipboard_monitor.to_string(),
             )));
             start_clipboard_monitor(app.handle());
+            selection_monitor::sync_from_config();
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             reload_store,
+            selection_monitor::set_auto_selection_translate,
             get_text,
             cut_image,
             get_base64,

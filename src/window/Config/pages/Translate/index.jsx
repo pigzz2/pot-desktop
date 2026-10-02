@@ -7,11 +7,13 @@ import { Dropdown } from '@nextui-org/react';
 import { Switch } from '@nextui-org/react';
 import { Button } from '@nextui-org/react';
 import { Card } from '@nextui-org/react';
-import React from 'react';
+import React, { useEffect } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
 
 import { languageList } from '../../../../utils/language';
 import { useConfig } from '../../../../hooks/useConfig';
 import { invoke } from '@tauri-apps/api';
+import { osType } from '../../../../utils/env';
 
 export default function Translate() {
     const [sourceLanguage, setSourceLanguage] = useConfig('translate_source_language', 'auto');
@@ -22,6 +24,7 @@ export default function Translate() {
     const [incrementalTranslate, setIncrementalTranslate] = useConfig('incremental_translate', false);
     const [historyDisable, setHistoryDisable] = useConfig('history_disable', false);
     const [dynamicTranslate, setDynamicTranslate] = useConfig('dynamic_translate', false);
+    const [autoSelectionTranslate, setAutoSelectionTranslate] = useConfig('auto_selection_translate', false);
     const [deleteNewline, setDeleteNewline] = useConfig('translate_delete_newline', false);
     const [rememberLanguage, setRememberLanguage] = useConfig('translate_remember_language', false);
     // const [translateFontSize, setTranslateFontSize] = useConfig('translate_font_size', 16);
@@ -34,10 +37,38 @@ export default function Translate() {
     const [alwaysOnTop, setAlwaysOnTop] = useConfig('translate_always_on_top', false);
     const { t } = useTranslation();
 
+    useEffect(() => {
+        if (osType === 'Windows_NT' && autoSelectionTranslate !== null) {
+            invoke('set_auto_selection_translate', { enabled: autoSelectionTranslate }).catch((error) => {
+                toast.error(`${t('config.translate.auto_selection_translate_failed')}: ${error}`);
+                if (autoSelectionTranslate) setAutoSelectionTranslate(false);
+            });
+        }
+    }, [autoSelectionTranslate]);
+
     return (
         <>
+            <Toaster />
             <Card className='mb-[10px]'>
                 <CardBody>
+                    {osType === 'Windows_NT' && (
+                        <div className='config-item'>
+                            <div className='min-w-0 pr-4'>
+                                <h3>{t('config.translate.auto_selection_translate')}</h3>
+                                <p className='text-xs text-default-500'>
+                                    {t('config.translate.auto_selection_translate_description')}
+                                </p>
+                            </div>
+                            {autoSelectionTranslate !== null && (
+                                <Switch
+                                    className='shrink-0'
+                                    aria-label={t('config.translate.auto_selection_translate')}
+                                    isSelected={autoSelectionTranslate}
+                                    onValueChange={setAutoSelectionTranslate}
+                                />
+                            )}
+                        </div>
+                    )}
                     <div className='config-item'>
                         <h3 className='my-auto mx-0'>{t('config.translate.source_language')}</h3>
                         {sourceLanguage !== null && (
