@@ -108,6 +108,9 @@
                 "auto_selection_translate": "划词后自动翻译",
                 "auto_selection_translate_description": "选中文字后自动翻译，中文不触发。仅支持可读取文本选区的应用。",
                 "auto_selection_translate_failed": "自动划词翻译启动失败",
+                "auto_selection_delay": "划词自动翻译延迟",
+                "auto_selection_delay_description": "鼠标松开后等待指定时间再读取选区并翻译。单位：毫秒，默认 200；失去焦点或按回车保存。",
+                "auto_selection_delay_invalid": "请输入大于 0 的整数",
                 "delete_newline": "自动删除换行",
                 "remember_language": "记住目标语言",
                 "font_size": {

@@ -1,3 +1,16 @@
+## 3.0.8 (2026-10-02)
+
+### New features:
+
+-   add automatic selected-text translation on Windows
+-   add a configurable delay for automatic selected-text translation
+-   add a tray toggle for automatic selected-text translation
+
+### Improvements:
+
+-   update the Linux build environment for Node.js 24 and pnpm 11
+-   update Wry to 0.24.12 for compatibility with newer Rust toolchains
+
 ## 3.0.7 (2025-5-10)
 
 ### New feature:

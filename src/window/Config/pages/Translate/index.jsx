@@ -7,7 +7,8 @@ import { Dropdown } from '@nextui-org/react';
 import { Switch } from '@nextui-org/react';
 import { Button } from '@nextui-org/react';
 import { Card } from '@nextui-org/react';
-import React, { useEffect } from 'react';
+import { Input } from '@nextui-org/react';
+import React, { useEffect, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 
 import { languageList } from '../../../../utils/language';
@@ -24,7 +25,11 @@ export default function Translate() {
     const [incrementalTranslate, setIncrementalTranslate] = useConfig('incremental_translate', false);
     const [historyDisable, setHistoryDisable] = useConfig('history_disable', false);
     const [dynamicTranslate, setDynamicTranslate] = useConfig('dynamic_translate', false);
-    const [autoSelectionTranslate, setAutoSelectionTranslate] = useConfig('auto_selection_translate', false);
+    const [autoSelectionTranslate] = useConfig('auto_selection_translate', false);
+    const [autoSelectionDelay] = useConfig('auto_selection_translate_delay_ms', 200);
+    const [delayInput, setDelayInput] = useState('');
+    const [selectionBusy, setSelectionBusy] = useState(false);
+    const [delayBusy, setDelayBusy] = useState(false);
     const [deleteNewline, setDeleteNewline] = useConfig('translate_delete_newline', false);
     const [rememberLanguage, setRememberLanguage] = useConfig('translate_remember_language', false);
     // const [translateFontSize, setTranslateFontSize] = useConfig('translate_font_size', 16);
@@ -38,13 +43,21 @@ export default function Translate() {
     const { t } = useTranslation();
 
     useEffect(() => {
-        if (osType === 'Windows_NT' && autoSelectionTranslate !== null) {
-            invoke('set_auto_selection_translate', { enabled: autoSelectionTranslate }).catch((error) => {
-                toast.error(`${t('config.translate.auto_selection_translate_failed')}: ${error}`);
-                if (autoSelectionTranslate) setAutoSelectionTranslate(false);
-            });
+        if (autoSelectionDelay !== null) setDelayInput(String(autoSelectionDelay));
+    }, [autoSelectionDelay]);
+
+    const validDelay = /^\d+$/.test(delayInput) && Number.isSafeInteger(Number(delayInput)) && Number(delayInput) > 0;
+    const saveDelay = async () => {
+        if (!validDelay || Number(delayInput) === autoSelectionDelay || delayBusy) return;
+        setDelayBusy(true);
+        try {
+            await invoke('set_auto_selection_delay', { delayMs: Number(delayInput) });
+        } catch (error) {
+            toast.error(String(error));
+        } finally {
+            setDelayBusy(false);
         }
-    }, [autoSelectionTranslate]);
+    };
 
     return (
         <>
@@ -52,22 +65,65 @@ export default function Translate() {
             <Card className='mb-[10px]'>
                 <CardBody>
                     {osType === 'Windows_NT' && (
-                        <div className='config-item'>
-                            <div className='min-w-0 pr-4'>
-                                <h3>{t('config.translate.auto_selection_translate')}</h3>
-                                <p className='text-xs text-default-500'>
-                                    {t('config.translate.auto_selection_translate_description')}
-                                </p>
+                        <>
+                            <div className='config-item'>
+                                <div className='min-w-0 pr-4'>
+                                    <h3>{t('config.translate.auto_selection_translate')}</h3>
+                                    <p className='text-xs text-default-500'>
+                                        {t('config.translate.auto_selection_translate_description')}
+                                    </p>
+                                </div>
+                                {autoSelectionTranslate !== null && (
+                                    <Switch
+                                        className='shrink-0'
+                                        aria-label={t('config.translate.auto_selection_translate')}
+                                        isSelected={autoSelectionTranslate}
+                                        isDisabled={selectionBusy}
+                                        onValueChange={async (enabled) => {
+                                            setSelectionBusy(true);
+                                            try {
+                                                await invoke('set_auto_selection_translate', { enabled });
+                                            } catch (error) {
+                                                toast.error(
+                                                    `${t('config.translate.auto_selection_translate_failed')}: ${error}`
+                                                );
+                                            } finally {
+                                                setSelectionBusy(false);
+                                            }
+                                        }}
+                                    />
+                                )}
                             </div>
-                            {autoSelectionTranslate !== null && (
-                                <Switch
-                                    className='shrink-0'
-                                    aria-label={t('config.translate.auto_selection_translate')}
-                                    isSelected={autoSelectionTranslate}
-                                    onValueChange={setAutoSelectionTranslate}
-                                />
-                            )}
-                        </div>
+                            <div className='config-item'>
+                                <div className='min-w-0 pr-4'>
+                                    <h3>{t('config.translate.auto_selection_delay')}</h3>
+                                    <p className='text-xs text-default-500'>
+                                        {t('config.translate.auto_selection_delay_description')}
+                                    </p>
+                                </div>
+                                {autoSelectionDelay !== null && (
+                                    <Input
+                                        className='max-w-[180px] shrink-0'
+                                        type='text'
+                                        inputMode='numeric'
+                                        variant='bordered'
+                                        aria-label={t('config.translate.auto_selection_delay')}
+                                        value={delayInput}
+                                        endContent={<span className='text-default-500 text-sm'>ms</span>}
+                                        isInvalid={!validDelay}
+                                        errorMessage={
+                                            !validDelay ? t('config.translate.auto_selection_delay_invalid') : undefined
+                                        }
+                                        isReadOnly={delayBusy}
+                                        onValueChange={setDelayInput}
+                                        onBlur={saveDelay}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter') event.currentTarget.blur();
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        </>
                     )}
                     <div className='config-item'>
                         <h3 className='my-auto mx-0'>{t('config.translate.source_language')}</h3>

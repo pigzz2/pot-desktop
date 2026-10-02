@@ -53,6 +53,22 @@
         </screenshot>
     </screenshots>
     <releases>
+        <release version="3.0.8" date="2026-10-02">
+            <url type="details">https://github.com/pigzz2/pot-desktop/releases/tag/3.0.8</url>
+            <description>
+                <p>New features:</p>
+                <ul>
+                    <li>Add automatic selected-text translation on Windows</li>
+                    <li>Add a configurable delay for automatic selected-text translation</li>
+                    <li>Add a tray toggle for automatic selected-text translation</li>
+                </ul>
+                <p>Improvements:</p>
+                <ul>
+                    <li>Update the Linux build environment for Node.js 24 and pnpm 11</li>
+                    <li>Update Wry to 0.24.12 for compatibility with newer Rust toolchains</li>
+                </ul>
+            </description>
+        </release>
         <release version="3.0.7" date="2025-5-10">
             <url type="details">https://github.com/pot-app/pot-desktop/releases/tag/3.0.7</url>
             <description>

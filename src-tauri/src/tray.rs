@@ -41,22 +41,38 @@ pub fn update_tray(app_handle: tauri::AppHandle, mut language: String, mut copy_
         "Update tray with language: {}, copy mode: {}",
         language, copy_mode
     );
-    tray_handle
-        .set_menu(match language.as_str() {
-            "en" => tray_menu_en(),
-            "zh_cn" => tray_menu_zh_cn(),
-            "zh_tw" => tray_menu_zh_tw(),
-            "ja" => tray_menu_ja(),
-            "ko" => tray_menu_ko(),
-            "fr" => tray_menu_fr(),
-            "de" => tray_menu_de(),
-            "ru" => tray_menu_ru(),
-            "pt_br" => tray_menu_pt_br(),
-            "fa" => tray_menu_fa(),
-            "uk" => tray_menu_uk(),
-            _ => tray_menu_en(),
-        })
-        .unwrap();
+    let menu = match language.as_str() {
+        "en" => tray_menu_en(),
+        "zh_cn" => tray_menu_zh_cn(),
+        "zh_tw" => tray_menu_zh_tw(),
+        "ja" => tray_menu_ja(),
+        "ko" => tray_menu_ko(),
+        "fr" => tray_menu_fr(),
+        "de" => tray_menu_de(),
+        "ru" => tray_menu_ru(),
+        "pt_br" => tray_menu_pt_br(),
+        "fa" => tray_menu_fa(),
+        "uk" => tray_menu_uk(),
+        _ => tray_menu_en(),
+    };
+    #[cfg(target_os = "windows")]
+    let menu = {
+        let mut menu = menu;
+        let title = match language.as_str() {
+            "zh_cn" => "划词后自动翻译",
+            "zh_tw" => "選取文字後自動翻譯",
+            _ => "Automatic Selection Translation",
+        };
+        menu.items.splice(
+            2..2,
+            SystemTrayMenu::new()
+                .add_item(CustomMenuItem::new("auto_selection_translate", title))
+                .items,
+        );
+        menu
+    };
+    tray_handle.set_menu(menu).unwrap();
+    sync_auto_selection_item();
     #[cfg(not(target_os = "linux"))]
     tray_handle
         .set_tooltip(&format!("pot {}", app_handle.package_info().version))
@@ -104,6 +120,8 @@ pub fn tray_event_handler<'a>(app: &'a AppHandle, event: SystemTrayEvent) {
             "input_translate" => on_input_translate_click(),
             "copy_source" => on_auto_copy_click(app, "source"),
             "clipboard_monitor" => on_clipboard_monitor_click(app),
+            #[cfg(target_os = "windows")]
+            "auto_selection_translate" => on_auto_selection_click(app),
             "copy_target" => on_auto_copy_click(app, "target"),
             "copy_source_target" => on_auto_copy_click(app, "source_target"),
             "copy_disable" => on_auto_copy_click(app, "disable"),
@@ -117,6 +135,39 @@ pub fn tray_event_handler<'a>(app: &'a AppHandle, event: SystemTrayEvent) {
             _ => {}
         },
         _ => {}
+    }
+}
+
+pub fn sync_auto_selection_item() {
+    #[cfg(target_os = "windows")]
+    if let Some(app) = crate::APP.get() {
+        let enabled = get("auto_selection_translate")
+            .and_then(|value| value.as_bool())
+            .unwrap_or(false);
+        if let Err(error) = app
+            .tray_handle()
+            .get_item("auto_selection_translate")
+            .set_selected(enabled)
+        {
+            log::warn!("Failed to update automatic selection tray item: {}", error);
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn on_auto_selection_click(app: &AppHandle) {
+    let enabled = get("auto_selection_translate")
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false);
+    if let Err(error) = crate::selection_monitor::set_auto_selection_translate(!enabled) {
+        log::error!(
+            "Failed to toggle automatic selection translation: {}",
+            error
+        );
+        let _ = tauri::api::notification::Notification::new(&app.config().tauri.bundle.identifier)
+            .title("Automatic selection translation")
+            .body(error)
+            .show();
     }
 }
 

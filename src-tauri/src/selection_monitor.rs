@@ -1,8 +1,47 @@
 //! Automatic translation only reads real UI Automation selections. Unlike the
 //! manual selection shortcut, it must never synthesize Copy or read a clipboard.
 
+use tauri::Manager;
+
+const DEFAULT_DELAY_MS: u64 = 200;
+
+fn positive_delay(value: &serde_json::Value) -> Result<u64, String> {
+    value.as_u64().filter(|delay| *delay > 0).ok_or_else(|| {
+        "The selection translation delay must be a positive integer in milliseconds".into()
+    })
+}
+
 #[tauri::command]
 pub fn set_auto_selection_translate(enabled: bool) -> Result<(), String> {
+    apply_enabled(enabled)?;
+    if crate::config::get("auto_selection_translate").and_then(|value| value.as_bool())
+        != Some(enabled)
+    {
+        crate::config::set("auto_selection_translate", enabled);
+    }
+    crate::APP
+        .get()
+        .unwrap()
+        .emit_all("auto_selection_translate_changed", enabled)
+        .map_err(|error| error.to_string())?;
+    crate::tray::sync_auto_selection_item();
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_auto_selection_delay(delay_ms: serde_json::Value) -> Result<(), String> {
+    let delay = positive_delay(&delay_ms)?;
+    crate::config::set("auto_selection_translate_delay_ms", delay);
+    #[cfg(target_os = "windows")]
+    platform::set_delay(delay);
+    crate::APP
+        .get()
+        .unwrap()
+        .emit_all("auto_selection_translate_delay_ms_changed", delay)
+        .map_err(|error| error.to_string())
+}
+
+fn apply_enabled(enabled: bool) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     return platform::set_enabled(enabled);
     #[cfg(not(target_os = "windows"))]
@@ -14,12 +53,27 @@ pub fn set_auto_selection_translate(enabled: bool) -> Result<(), String> {
 }
 
 pub fn sync_from_config() {
+    let delay = crate::config::get("auto_selection_translate_delay_ms")
+        .as_ref()
+        .and_then(|value| positive_delay(value).ok())
+        .unwrap_or(DEFAULT_DELAY_MS);
+    #[cfg(target_os = "windows")]
+    platform::set_delay(delay);
     let enabled = crate::config::get("auto_selection_translate")
         .and_then(|value| value.as_bool())
         .unwrap_or(false);
-    if let Err(error) = set_auto_selection_translate(enabled) {
+    if let Err(error) = apply_enabled(enabled) {
         log::warn!("Automatic selection translation: {}", error);
     }
+    crate::tray::sync_auto_selection_item();
+    let _ = crate::APP
+        .get()
+        .unwrap()
+        .emit_all("auto_selection_translate_changed", enabled);
+    let _ = crate::APP
+        .get()
+        .unwrap()
+        .emit_all("auto_selection_translate_delay_ms_changed", delay);
 }
 
 #[cfg(any(target_os = "windows", test))]
@@ -111,6 +165,7 @@ mod platform {
 
     static ENABLED: AtomicBool = AtomicBool::new(false);
     static GENERATION: AtomicU64 = AtomicU64::new(0);
+    static DELAY_MS: AtomicU64 = AtomicU64::new(super::DEFAULT_DELAY_MS);
     static EVENTS: OnceCell<Sender<SelectionEvent>> = OnceCell::new();
     static HOOK: Lazy<Mutex<Option<HookThread>>> = Lazy::new(|| Mutex::new(None));
 
@@ -125,10 +180,18 @@ mod platform {
         process: u32,
         point: (i32, i32),
         generation: u64,
+        released_at: Instant,
+        delay: Duration,
     }
 
     thread_local! {
         static GESTURE: RefCell<Gesture> = RefCell::new(Gesture::default());
+    }
+
+    pub fn set_delay(delay: u64) {
+        if DELAY_MS.swap(delay, Ordering::SeqCst) != delay {
+            GENERATION.fetch_add(1, Ordering::SeqCst);
+        }
     }
 
     pub fn set_enabled(enabled: bool) -> Result<(), String> {
@@ -242,6 +305,10 @@ mod platform {
                                         process,
                                         point,
                                         generation: GENERATION.load(Ordering::SeqCst),
+                                        released_at: Instant::now(),
+                                        delay: Duration::from_millis(
+                                            DELAY_MS.load(Ordering::SeqCst),
+                                        ),
                                     });
                                 }
                             }
@@ -282,7 +349,9 @@ mod platform {
             let mut previous: Option<(isize, String, Instant)> = None;
             while let Ok(mut event) = receiver.recv() {
                 // Each newer gesture replaces the pending read and restarts the delay.
-                while let Ok(newer) = receiver.recv_timeout(Duration::from_millis(200)) {
+                while let Ok(newer) =
+                    receiver.recv_timeout(event.delay.saturating_sub(event.released_at.elapsed()))
+                {
                     event = newer;
                 }
                 if !is_current(&event) {
@@ -360,8 +429,25 @@ mod platform {
 
 #[cfg(test)]
 mod tests {
-    use super::{moved, Gesture};
+    use super::{moved, positive_delay, Gesture};
     use std::time::{Duration, Instant};
+
+    #[test]
+    fn delay_accepts_only_positive_integer_numbers() {
+        for invalid in [
+            serde_json::json!(0),
+            serde_json::json!(-1),
+            serde_json::json!(1.5),
+            serde_json::json!("200"),
+            serde_json::json!(null),
+            serde_json::json!(true),
+        ] {
+            assert!(positive_delay(&invalid).is_err());
+        }
+        assert_eq!(positive_delay(&serde_json::json!(1)).unwrap(), 1);
+        assert_eq!(positive_delay(&serde_json::json!(200)).unwrap(), 200);
+        assert_eq!(positive_delay(&serde_json::json!(5000)).unwrap(), 5000);
+    }
 
     #[test]
     fn tolerates_click_jitter_but_recognizes_drag() {

@@ -108,6 +108,9 @@
                 "auto_selection_translate": "Automatically translate selected text",
                 "auto_selection_translate_description": "Translate selected text automatically, skipping Chinese. Requires an app that exposes text selections.",
                 "auto_selection_translate_failed": "Could not start automatic selection translation",
+                "auto_selection_delay": "Automatic Selection Translation Delay",
+                "auto_selection_delay_description": "Wait after mouse release before reading the selection and translating. Milliseconds, default 200; save on blur or Enter.",
+                "auto_selection_delay_invalid": "Enter an integer greater than 0",
                 "delete_newline": "Delete Newline",
                 "remember_language": "Remember Target Language",
                 "font_size": {

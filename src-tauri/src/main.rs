@@ -102,7 +102,10 @@ fn main() {
             }
             match get("proxy_enable") {
                 Some(v) => {
-                    if v.as_bool().unwrap() && get("proxy_host").map_or(false, |host| !host.as_str().unwrap().is_empty()) {
+                    if v.as_bool().unwrap()
+                        && get("proxy_host")
+                            .map_or(false, |host| !host.as_str().unwrap().is_empty())
+                    {
                         let _ = set_proxy();
                     }
                 }
@@ -132,6 +135,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             reload_store,
             selection_monitor::set_auto_selection_translate,
+            selection_monitor::set_auto_selection_delay,
             get_text,
             cut_image,
             get_base64,
